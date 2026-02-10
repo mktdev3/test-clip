@@ -1,18 +1,7 @@
-# Core dependencies
+# Core dependencies for Phase 1
 torch>=2.0.0
 transformers>=4.30.0
 Pillow>=10.0.0
 numpy>=1.24.0
 scikit-learn>=1.3.0
 python-dotenv>=1.0.0
-
-# Phase 2: API and UI
-fastapi>=0.100.0
-uvicorn>=0.23.0
-streamlit>=1.25.0
-
-# Phase 2: Performance optimization
-faiss-cpu>=1.7.4  # Use faiss-gpu for GPU support
-
-# Phase 3: Vector database (optional)
-# qdrant-client>=1.5.0

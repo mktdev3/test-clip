@@ -235,42 +235,12 @@ services:
 - [ ] 日本語クエリのテスト
   - 例: "猫", "りんご", "山", "鳩"
 
-### 5.2 Phase 2: 最適化とUI（2-3週間）
 
-#### 5.2.1 パフォーマンス改善
-- [ ] Faissの導入
-- [ ] バッチ処理の実装
-- [ ] キャッシング機構
-
-#### 5.2.2 UI開発
-- [ ] Streamlitでの検索UI
-- [ ] 画像アップロード機能
-- [ ] 検索結果の可視化
-
-#### 5.2.3 Docker化
-- [ ] Dockerfileの作成
-- [ ] docker-compose.ymlの作成
-- [ ] 環境変数の設定
-
-### 5.3 Phase 3: スケーリング（3-4週間）
-
-#### 5.3.1 ベクトルDB導入
-- [ ] Qdrantのセットアップ
-- [ ] データ移行スクリプト
-- [ ] API統合
-
-#### 5.3.2 本番環境対応
-- [ ] ロギング
-- [ ] エラーハンドリング
-- [ ] モニタリング
 
 ## 6. ディレクトリ構成
 
 ```
 test-clip/
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
 ├── src/
 │   ├── __init__.py
 │   ├── clip_model.py      # CLIPモデルのラッパー
@@ -278,11 +248,6 @@ test-clip/
 │   ├── text_encoder.py    # テキストエンコーディング
 │   ├── vector_store.py    # ベクトルストレージ
 │   └── search.py          # 検索ロジック
-├── api/
-│   ├── __init__.py
-│   └── main.py            # FastAPI エンドポイント
-├── ui/
-│   └── app.py             # Streamlit UI
 ├── scripts/
 │   ├── build_index.py     # インデックス作成
 │   └── search_cli.py      # CLI検索ツール
@@ -297,14 +262,10 @@ test-clip/
 ├── data/
 │   ├── vectors/           # ベクトルデータ
 │   └── metadata/          # メタデータ
-├── tests/
-│   ├── test_encoder.py
-│   └── test_search.py
 ├── docs/
 │   ├── specification.md   # 本ドキュメント
-│   └── api_reference.md
+│   └── issues/            # 実装タスク
 ├── requirements.txt
-├── .env.example
 └── README.md
 ```
 
@@ -319,16 +280,7 @@ transformers>=4.30.0
 Pillow>=10.0.0
 numpy>=1.24.0
 scikit-learn>=1.3.0
-fastapi>=0.100.0
-uvicorn>=0.23.0
-streamlit>=1.25.0
 python-dotenv>=1.0.0
-
-# Phase 2以降
-faiss-cpu>=1.7.4  # または faiss-gpu
-
-# Phase 3以降
-qdrant-client>=1.5.0  # ベクトルDB使用時
 ```
 
 ### 7.2 環境変数
@@ -343,44 +295,7 @@ BATCH_SIZE=32
 TOP_K=10
 ```
 
-### 7.3 API仕様（Phase 2以降）
 
-#### 7.3.1 画像検索エンドポイント
-```http
-POST /api/search
-Content-Type: application/json
-
-{
-  "query": "猫の写真",
-  "top_k": 10
-}
-
-Response:
-{
-  "results": [
-    {
-      "image_path": "images/nekocyanPAKE5286-484_TP_V.jpg",
-      "score": 0.89,
-      "metadata": {...}
-    },
-    ...
-  ],
-  "query_time_ms": 45
-}
-```
-
-#### 7.3.2 インデックス更新エンドポイント
-```http
-POST /api/index/rebuild
-Content-Type: application/json
-
-Response:
-{
-  "status": "success",
-  "indexed_images": 7,
-  "time_ms": 1234
-}
-```
 
 ## 8. テスト計画
 
@@ -389,17 +304,9 @@ Response:
 - [ ] テキストエンコーディングの正確性
 - [ ] ベクトル類似度計算
 
-### 8.2 統合テスト
-- [ ] エンドツーエンド検索フロー
-- [ ] バッチ処理
-- [ ] エラーハンドリング
 
-### 8.3 性能テスト
-- [ ] 検索レスポンス時間
-- [ ] メモリ使用量
-- [ ] スループット
 
-### 8.4 テストケース例
+### 8.2 テストケース例
 
 | テストケース | 入力 | 期待結果 |
 |------------|------|---------|
@@ -407,52 +314,18 @@ Response:
 | りんご検索 | "りんご" | PED_narandaapple2_TP_V.jpg が上位 |
 | 鳩検索 | "鳥" または "鳩" | hatoPAUI2850-12793_TP_V.jpg が上位 |
 
-## 9. リスクと対策
 
-### 9.1 技術的リスク
 
-| リスク | 影響度 | 対策 |
-|-------|-------|------|
-| モデルのメモリ不足 | 高 | GPUメモリ監視、バッチサイズ調整 |
-| 検索速度の低下 | 中 | Faiss導入、インデックス最適化 |
-| Docker環境の複雑化 | 低 | docker-composeで管理 |
 
-### 9.2 運用リスク
 
-| リスク | 影響度 | 対策 |
-|-------|-------|------|
-| 画像数の急増 | 中 | ベクトルDB早期導入 |
-| 日本語精度の不足 | 中 | モデルファインチューニング検討 |
+## 9. 参考資料
 
-## 10. 今後の拡張案
-
-### 10.1 機能拡張
-- [ ] 画像から画像の検索（Image-to-Image）
-- [ ] マルチモーダル検索（テキスト + 画像）
-- [ ] フィルタリング機能（日付、タグ）
-- [ ] 検索履歴の保存
-
-### 10.2 技術的改善
-- [ ] モデルの量子化（推論高速化）
-- [ ] 分散処理対応
-- [ ] クラウドデプロイ（AWS, GCP）
-- [ ] RESTful API → GraphQL
-
-## 11. 参考資料
-
-### 11.1 モデル
+### 9.1 モデル
 - [rinna/japanese-clip-vit-b-16](https://huggingface.co/rinna/japanese-clip-vit-b-16)
 - [OpenAI CLIP](https://github.com/openai/CLIP)
 
-### 11.2 ベクトルDB
-- [Qdrant Documentation](https://qdrant.tech/documentation/)
-- [Faiss Wiki](https://github.com/facebookresearch/faiss/wiki)
-- [Milvus Documentation](https://milvus.io/docs)
-
-### 11.3 フレームワーク
+### 9.2 フレームワーク
 - [Hugging Face Transformers](https://huggingface.co/docs/transformers)
-- [FastAPI](https://fastapi.tiangolo.com/)
-- [Streamlit](https://docs.streamlit.io/)
 
 ---
 
