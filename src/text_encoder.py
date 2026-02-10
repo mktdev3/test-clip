@@ -128,7 +128,48 @@ class TextEncoder:
             # Encode
             try:
                 with torch.no_grad():
-                    features = self.clip_model.model.get_text_features(**inputs)
+                    if hasattr(self.clip_model.model, 'text_model') and hasattr(self.clip_model.model, 'text_projection'):
+                        outputs = self.clip_model.model.text_model(**inputs)
+                        if hasattr(outputs, 'last_hidden_state'):
+                            pooled = outputs.last_hidden_state[:, 0]
+                        elif hasattr(outputs, 'pooler_output'):
+                            pooled = outputs.pooler_output
+                        else:
+                            raise RuntimeError("text_modelの出力から特徴を取得できません")
+
+                        features = self.clip_model.model.text_projection(pooled)
+                    else:
+                        output = self.clip_model.model.get_text_features(**inputs)
+
+                        # Handle case where output is BaseModelOutputWithPooling (e.g. Rinna model)
+                        if hasattr(output, 'pooler_output'):
+                            pooled = output.pooler_output
+                            if hasattr(self.clip_model.model, 'text_projection'):
+                                projection = self.clip_model.model.text_projection
+                                in_features = getattr(projection, 'in_features', None)
+                                out_features = getattr(projection, 'out_features', None)
+                                if in_features is None and hasattr(projection, 'weight'):
+                                    in_features = projection.weight.shape[1]
+                                    out_features = projection.weight.shape[0]
+                                if in_features is not None and pooled.shape[-1] == in_features:
+                                    features = projection(pooled)
+                                elif out_features is not None and pooled.shape[-1] == out_features:
+                                    # すでに射影済みの可能性があるため、そのまま使用
+                                    features = pooled
+                                else:
+                                    logger.warning(
+                                        "text_projectionの次元が不一致のため、pooler_outputをそのまま使用します: "
+                                        f"pooler_dim={pooled.shape[-1]}, projection_in={in_features}, projection_out={out_features}"
+                                    )
+                                    features = pooled
+                            else:
+                                features = pooled
+                        else:
+                            features = output
+
+                # Normalize
+                features = features / features.norm(dim=-1, keepdim=True)
+
             except Exception as e:
                 logger.error(f"エンコードに失敗しました: {e}")
                 raise RuntimeError(f"エンコードエラー: {e}") from e

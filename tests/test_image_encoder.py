@@ -12,6 +12,8 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from PIL import Image
 
+os.environ.setdefault('USE_JAPANESE_CLIP', '0')
+
 from src.clip_model import CLIPModel
 from src.image_encoder import ImageEncoder
 
@@ -22,7 +24,7 @@ class TestImageEncoder:
     @pytest.fixture
     def mock_clip_model(self):
         """モックCLIPModelを作成するフィクスチャ"""
-        with patch('src.clip_model.AutoModel.from_pretrained') as mock_model, \
+        with patch('src.clip_model.VisionTextDualEncoderModel.from_pretrained') as mock_model, \
              patch('src.clip_model.AutoTokenizer.from_pretrained') as mock_tokenizer, \
              patch('src.clip_model.AutoImageProcessor.from_pretrained') as mock_processor:
             

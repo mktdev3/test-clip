@@ -116,7 +116,21 @@ class ImageEncoder:
         
         # 推論実行
         with torch.no_grad():
-            features = self.clip_model.model.get_image_features(**inputs)
+            if hasattr(self.clip_model.model, 'vision_model') and hasattr(self.clip_model.model, 'visual_projection'):
+                outputs = self.clip_model.model.vision_model(**inputs)
+                if hasattr(outputs, 'last_hidden_state'):
+                    pooled = outputs.last_hidden_state[:, 0]
+                elif hasattr(outputs, 'pooler_output'):
+                    pooled = outputs.pooler_output
+                else:
+                    raise RuntimeError("vision_modelの出力から特徴を取得できません")
+
+                features = self.clip_model.model.visual_projection(pooled)
+            else:
+                features = self.clip_model.model.get_image_features(**inputs)
+
+            # Normalize
+            features = features / features.norm(dim=-1, keepdim=True)
         
         # NumPy配列に変換して返す
         vector = features.cpu().numpy().squeeze()
@@ -169,9 +183,22 @@ class ImageEncoder:
             inputs = {k: v.to(self.clip_model.device) for k, v in inputs.items()}
             
             # 推論実行
-            # 推論実行
             with torch.no_grad():
-                features = self.clip_model.model.get_image_features(**inputs)
+                if hasattr(self.clip_model.model, 'vision_model') and hasattr(self.clip_model.model, 'visual_projection'):
+                    outputs = self.clip_model.model.vision_model(**inputs)
+                    if hasattr(outputs, 'last_hidden_state'):
+                        pooled = outputs.last_hidden_state[:, 0]
+                    elif hasattr(outputs, 'pooler_output'):
+                        pooled = outputs.pooler_output
+                    else:
+                        raise RuntimeError("vision_modelの出力から特徴を取得できません")
+
+                    features = self.clip_model.model.visual_projection(pooled)
+                else:
+                    features = self.clip_model.model.get_image_features(**inputs)
+
+                # Normalize
+                features = features / features.norm(dim=-1, keepdim=True)
             
             # デバッグログと互換性対応
             if not isinstance(features, torch.Tensor):

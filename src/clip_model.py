@@ -8,7 +8,7 @@ import os
 import logging
 from typing import Optional
 import torch
-from transformers import AutoModel, AutoTokenizer, AutoImageProcessor
+from transformers import VisionTextDualEncoderModel, AutoTokenizer, AutoImageProcessor
 from dotenv import load_dotenv
 
 
@@ -18,6 +18,42 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+class _JapaneseClipTokenizer:
+    def __init__(self, tokenizer, device: str, max_seq_len: int = 77):
+        self._tokenizer = tokenizer
+        self._device = device
+        self._max_seq_len = max_seq_len
+
+    def __call__(self, texts, **kwargs):
+        import japanese_clip as ja_clip
+
+        if isinstance(texts, str):
+            texts = [texts]
+
+        return ja_clip.tokenize(
+            texts=texts,
+            tokenizer=self._tokenizer,
+            max_seq_len=self._max_seq_len,
+            device=self._device
+        )
+
+
+class _JapaneseClipProcessor:
+    def __init__(self, preprocess, device: str):
+        self._preprocess = preprocess
+        self._device = device
+
+    def __call__(self, images=None, **kwargs):
+        if images is None:
+            raise ValueError("imagesが指定されていません")
+
+        if not isinstance(images, list):
+            images = [images]
+
+        pixel_values = torch.stack([self._preprocess(img) for img in images]).to(self._device)
+        return {"pixel_values": pixel_values}
 
 
 class CLIPModel:
@@ -61,18 +97,45 @@ class CLIPModel:
         # モデルの読み込み
         try:
             logger.info("モデルを読み込んでいます...")
-            self.model = AutoModel.from_pretrained(self.model_name)
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+
+            use_japanese_clip = os.getenv("USE_JAPANESE_CLIP", "1").lower() in {"1", "true", "yes"}
+            if use_japanese_clip:
+                try:
+                    import japanese_clip as ja_clip
+
+                    cache_dir = os.getenv("JAPANESE_CLIP_CACHE_DIR")
+                    if cache_dir:
+                        model, preprocess = ja_clip.load(self.model_name, cache_dir=cache_dir, device=self.device)
+                    else:
+                        model, preprocess = ja_clip.load(self.model_name, device=self.device)
+
+                    tokenizer = ja_clip.load_tokenizer()
+
+                    self.model = model
+                    self.tokenizer = _JapaneseClipTokenizer(tokenizer, self.device)
+                    self.processor = _JapaneseClipProcessor(preprocess, self.device)
+                    self.is_japanese_clip = True
+
+                    logger.info("japanese-clip 経由でモデルを読み込みました")
+                    logger.info("モデルの読み込みが完了しました")
+                    return
+                except Exception as e:
+                    logger.warning(f"japanese-clipの読み込みに失敗しました。transformersにフォールバックします: {e}")
+
+            self.model = VisionTextDualEncoderModel.from_pretrained(self.model_name, trust_remote_code=True)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
             try:
-                self.processor = AutoImageProcessor.from_pretrained(self.model_name)
+                self.processor = AutoImageProcessor.from_pretrained(self.model_name, trust_remote_code=True)
             except OSError:
                 logger.warning(f"Could not load image processor from {self.model_name}, falling back to 'openai/clip-vit-base-patch16'")
                 self.processor = AutoImageProcessor.from_pretrained("openai/clip-vit-base-patch16")
-            
+
+            self.is_japanese_clip = False
+
             # デバイスへの転送
             self.model.to(self.device)
             logger.info("モデルの読み込みが完了しました")
-            
+
         except Exception as e:
             error_msg = f"モデルの読み込みに失敗しました: {str(e)}"
             logger.error(error_msg)

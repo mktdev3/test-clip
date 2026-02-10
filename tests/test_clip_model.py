@@ -8,6 +8,8 @@ import os
 import pytest
 import torch
 from unittest.mock import patch, MagicMock
+os.environ.setdefault('USE_JAPANESE_CLIP', '0')
+
 from src.clip_model import CLIPModel
 
 
@@ -17,7 +19,7 @@ class TestCLIPModel:
     def test_model_initialization_default(self):
         """デフォルト設定でのモデル初期化テスト"""
         # モデルの読み込みをモック化
-        with patch('src.clip_model.AutoModel.from_pretrained') as mock_model, \
+            with patch('src.clip_model.VisionTextDualEncoderModel.from_pretrained') as mock_model, \
              patch('src.clip_model.AutoTokenizer.from_pretrained') as mock_tokenizer, \
              patch('src.clip_model.AutoImageProcessor.from_pretrained') as mock_processor:
             
@@ -32,15 +34,15 @@ class TestCLIPModel:
             # アサーション
             assert model.model_name == 'rinna/japanese-clip-vit-b-16'
             assert model.device in ['cpu', 'cuda']
-            mock_model.assert_called_once_with('rinna/japanese-clip-vit-b-16')
-            mock_tokenizer.assert_called_once_with('rinna/japanese-clip-vit-b-16')
-            mock_processor.assert_called_once_with('rinna/japanese-clip-vit-b-16')
+            mock_model.assert_called_once_with('rinna/japanese-clip-vit-b-16', trust_remote_code=True)
+            mock_tokenizer.assert_called_once_with('rinna/japanese-clip-vit-b-16', trust_remote_code=True)
+            mock_processor.assert_called_once_with('rinna/japanese-clip-vit-b-16', trust_remote_code=True)
     
     def test_model_initialization_custom_model(self):
         """カスタムモデル名での初期化テスト"""
         custom_model_name = 'custom/model-name'
         
-        with patch('src.clip_model.AutoModel.from_pretrained') as mock_model, \
+            with patch('src.clip_model.VisionTextDualEncoderModel.from_pretrained') as mock_model, \
              patch('src.clip_model.AutoTokenizer.from_pretrained') as mock_tokenizer, \
              patch('src.clip_model.AutoImageProcessor.from_pretrained') as mock_processor:
             
@@ -51,11 +53,11 @@ class TestCLIPModel:
             model = CLIPModel(model_name=custom_model_name)
             
             assert model.model_name == custom_model_name
-            mock_model.assert_called_once_with(custom_model_name)
+            mock_model.assert_called_once_with(custom_model_name, trust_remote_code=True)
     
     def test_device_setting_cpu(self):
         """CPUデバイス設定のテスト"""
-        with patch('src.clip_model.AutoModel.from_pretrained') as mock_model, \
+            with patch('src.clip_model.VisionTextDualEncoderModel.from_pretrained') as mock_model, \
              patch('src.clip_model.AutoTokenizer.from_pretrained') as mock_tokenizer, \
              patch('src.clip_model.AutoImageProcessor.from_pretrained') as mock_processor:
             
@@ -71,7 +73,7 @@ class TestCLIPModel:
     
     def test_device_setting_cuda(self):
         """CUDAデバイス設定のテスト（CUDA利用可能な場合）"""
-        with patch('src.clip_model.AutoModel.from_pretrained') as mock_model, \
+            with patch('src.clip_model.VisionTextDualEncoderModel.from_pretrained') as mock_model, \
              patch('src.clip_model.AutoTokenizer.from_pretrained') as mock_tokenizer, \
              patch('src.clip_model.AutoImageProcessor.from_pretrained') as mock_processor:
             
@@ -88,7 +90,7 @@ class TestCLIPModel:
     def test_environment_variable_loading(self):
         """環境変数からの設定読み込みテスト"""
         with patch.dict(os.environ, {'MODEL_NAME': 'test/model', 'DEVICE': 'cpu'}), \
-             patch('src.clip_model.AutoModel.from_pretrained') as mock_model, \
+            patch('src.clip_model.VisionTextDualEncoderModel.from_pretrained') as mock_model, \
              patch('src.clip_model.AutoTokenizer.from_pretrained') as mock_tokenizer, \
              patch('src.clip_model.AutoImageProcessor.from_pretrained') as mock_processor:
             
@@ -103,7 +105,7 @@ class TestCLIPModel:
     
     def test_model_loading_failure(self):
         """モデル読み込み失敗時のエラーハンドリングテスト"""
-        with patch('src.clip_model.AutoModel.from_pretrained') as mock_model:
+            with patch('src.clip_model.VisionTextDualEncoderModel.from_pretrained') as mock_model:
             mock_model.side_effect = Exception("Model not found")
             
             with pytest.raises(RuntimeError) as exc_info:
@@ -113,7 +115,7 @@ class TestCLIPModel:
     
     def test_get_model_info(self):
         """モデル情報取得のテスト"""
-        with patch('src.clip_model.AutoModel.from_pretrained') as mock_model, \
+            with patch('src.clip_model.VisionTextDualEncoderModel.from_pretrained') as mock_model, \
              patch('src.clip_model.AutoTokenizer.from_pretrained') as mock_tokenizer, \
              patch('src.clip_model.AutoImageProcessor.from_pretrained') as mock_processor:
             
@@ -139,7 +141,7 @@ class TestCLIPModel:
     
     def test_repr(self):
         """__repr__メソッドのテスト"""
-        with patch('src.clip_model.AutoModel.from_pretrained') as mock_model, \
+            with patch('src.clip_model.VisionTextDualEncoderModel.from_pretrained') as mock_model, \
              patch('src.clip_model.AutoTokenizer.from_pretrained') as mock_tokenizer, \
              patch('src.clip_model.AutoImageProcessor.from_pretrained') as mock_processor:
             
