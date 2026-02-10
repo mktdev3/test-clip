@@ -63,7 +63,11 @@ class CLIPModel:
             logger.info("モデルを読み込んでいます...")
             self.model = AutoModel.from_pretrained(self.model_name)
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            self.processor = AutoImageProcessor.from_pretrained(self.model_name)
+            try:
+                self.processor = AutoImageProcessor.from_pretrained(self.model_name)
+            except OSError:
+                logger.warning(f"Could not load image processor from {self.model_name}, falling back to 'openai/clip-vit-base-patch16'")
+                self.processor = AutoImageProcessor.from_pretrained("openai/clip-vit-base-patch16")
             
             # デバイスへの転送
             self.model.to(self.device)

@@ -169,9 +169,19 @@ class ImageEncoder:
             inputs = {k: v.to(self.clip_model.device) for k, v in inputs.items()}
             
             # 推論実行
+            # 推論実行
             with torch.no_grad():
                 features = self.clip_model.model.get_image_features(**inputs)
             
+            # デバッグログと互換性対応
+            if not isinstance(features, torch.Tensor):
+                if hasattr(features, 'image_embeds'):
+                    features = features.image_embeds
+                elif hasattr(features, 'pooler_output'):
+                    features = features.pooler_output
+                else:
+                    logger.warning("Could not identify tensor attribute, using features as is.")
+
             # NumPy配列に変換
             batch_vectors = features.cpu().numpy()
             all_vectors.append(batch_vectors)
